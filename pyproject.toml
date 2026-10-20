@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eba-py"
+version = "0.1.0"
+description = "进程内、单写者、合作式的 EBA 运行时"
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+
+[project.optional-dependencies]
+dev = ["mypy", "ruff"]
+
+[tool.setuptools.packages.find]
+include = ["eba*"]
+
+[tool.setuptools.package-data]
+eba = ["py.typed"]
+
+[tool.mypy]
+files = ["eba"]
+strict = true
+python_version = "3.11"
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+warn_return_any = true
+disallow_any_generics = true
+disallow_untyped_calls = true
+extra_checks = true
+no_implicit_optional = true
+no_implicit_reexport = true  # facade 暴露的名称必须进 __all__
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 122  # eba 包现行最宽行的上确界，标定而非许愿
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "B", "UP", "SIM", "C4", "PIE", "PERF", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]

@@ -1,0 +1,2 @@
+class EnvelopeBuildError(ValueError):
+    pass
