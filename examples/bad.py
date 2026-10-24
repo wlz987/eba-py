@@ -1,5 +1,6 @@
-from eba import Bus, Caller, Inbox, ManualClock, Runtime, SeqIdGen
+from eba import Bus, Inbox, ManualClock, Runtime, SeqIdGen
 from eba.envelope.errors import EnvelopeBuildError
+from eba.job import Caller
 
 
 def main() -> None:

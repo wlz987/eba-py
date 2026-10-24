@@ -1,4 +1,5 @@
-from eba import Bus, Caller, Inbox, ManualClock, Runtime, SeqIdGen
+from eba import Bus, Inbox, ManualClock, Runtime, SeqIdGen
+from eba.job import Caller
 
 
 def main() -> None:

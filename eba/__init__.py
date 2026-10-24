@@ -5,7 +5,6 @@ from eba.envelope import (
     EnvelopeBuildError,
     EnvelopeId,
     Header,
-    Matchmaker,
     SeqIdGen,
     UuidIdGen,
     actor_id,
@@ -21,10 +20,10 @@ from eba.envelope import (
     result_value,
 )
 from eba.errors import BackpressureError, BusError, DeliveryError, InvalidTopic, MailboxFull
-from eba.job import Caller, Context, Job, JobHost, Reply
+from eba.job import Context, Job, JobHost, Reply
 from eba.mail.bus import Bus
 from eba.mail.inbox import Inbox, Receiver
-from eba.runtime.drive import Drive, Pending
+from eba.runtime.drive import Pending
 from eba.runtime.runtime import Runtime
 from eba.time.clock import Clock, ManualClock, MonotonicClock
 
@@ -33,12 +32,10 @@ __all__ = [
     "BackpressureError",
     "Bus",
     "BusError",
-    "Caller",
     "Clock",
     "Completion",
     "Context",
     "DeliveryError",
-    "Drive",
     "Envelope",
     "EnvelopeBuildError",
     "EnvelopeId",
@@ -49,7 +46,6 @@ __all__ = [
     "JobHost",
     "MailboxFull",
     "ManualClock",
-    "Matchmaker",
     "MonotonicClock",
     "Pending",
     "Receiver",

@@ -3,8 +3,6 @@ import time
 
 from eba import (
     Bus,
-    Caller,
-    Drive,
     Inbox,
     Job,
     JobHost,
@@ -13,6 +11,8 @@ from eba import (
     SeqIdGen,
     ok_payload,
 )
+from eba.job import Caller
+from eba.runtime.drive import Drive
 
 
 class EchoJob(Job):

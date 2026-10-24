@@ -1,6 +1,8 @@
 import asyncio
 
-from eba import Bus, Caller, Drive, Inbox, ManualClock, Runtime, SeqIdGen
+from eba import Bus, Inbox, ManualClock, Runtime, SeqIdGen
+from eba.job import Caller
+from eba.runtime.drive import Drive
 
 
 async def main() -> None:
