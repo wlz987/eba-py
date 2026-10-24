@@ -47,13 +47,13 @@ def pay_boom(_completion):
 def main() -> None:
     random.seed(7)
     cancel_errors = 0
-    for wave in range(100):
-        runtime = Runtime(Bus(), ManualClock(), SeqIdGen())
-        runtime.add(EchoHost(actor_id="echo", receiver=Inbox(64).receiver(), patterns=["echo"]))
-        runtime.add(HoldHost(actor_id="hold", receiver=Inbox(64).receiver(), patterns=["hold"]))
-        runtime.add(BadHost(actor_id="bad", receiver=Inbox(64).receiver(), patterns=["bad"]))
-        caller = Caller(Inbox(256).receiver(), runtime.id_gen)
-        runtime.add(caller)
+    runtime = Runtime(Bus(), ManualClock(), SeqIdGen())
+    runtime.add(EchoHost(actor_id="echo", receiver=Inbox(64).receiver(), patterns=["echo"]))
+    runtime.add(HoldHost(actor_id="hold", receiver=Inbox(64).receiver(), patterns=["hold"]))
+    runtime.add(BadHost(actor_id="bad", receiver=Inbox(64).receiver(), patterns=["bad"]))
+    caller = Caller(Inbox(256).receiver(), runtime.id_gen)
+    runtime.add(caller)
+    for wave in range(1000):
         roots = []
         for index in range(20):
             topic = random.choice(("echo", "hold", "bad"))
@@ -70,14 +70,22 @@ def main() -> None:
         for _ in range(12):
             runtime.advance()
         stats = runtime.stats()
-        if stats["active"] or stats["held"] or stats["pending"] or stats["queued"]:
+        if any(stats[key] for key in ("active", "held", "pending", "queued", "outbox", "buried")):
             raise SystemExit(f"soak leak wave {wave}: {stats}")
-        cancel_errors += stats["cancel_errors"]
-        runtime.close()
+        if any(
+            any(detail[key] for key in ("active", "held", "pending", "queued", "outbox", "buried"))
+            for detail in stats["hosts_detail"].values()
+        ):
+            raise SystemExit(f"soak host leak wave {wave}: {stats['hosts_detail']}")
+        cancel_errors = stats["cancel_errors"]
+    runtime.close()
     if cancel_errors == 0:
         raise SystemExit("soak did not exercise cancel_errors")
-    print(f"soak ok: 100 waves x 20 asks, {cancel_errors} contained hook errors")
+    print(f"soak ok: 1000 waves x 20 asks, {cancel_errors} contained hook errors")
 
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()

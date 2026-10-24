@@ -45,19 +45,29 @@ class Outbox(_OutboxSend):
         group = self._groups.get(topic)
         if group is None or group.items[0] is not envelope:
             if not self.contains(envelope):
-                self._buried.append(envelope)
+                self._remember_buried(envelope)
                 self._count += 1
             return
         self._candidates.pop(topic, None)
         group.interest.dispose()
         group.items.popleft()
-        self._buried.append(envelope)
+        self._remember_buried(envelope)
         if group.items:
             self._candidates[topic] = None
             self._signal.notify(DELIVERY)
             return
         del self._groups[topic]
         self._signal.set(DELIVERY, bool(self._candidates))
+
+    def _remember_buried(self, envelope: Envelope) -> None:
+        self._buried.append(envelope)
+        while len(self._buried) > self._limit:
+            self._buried.pop(0)
+            self._count -= 1
+
+    @property
+    def buried(self) -> int:
+        return len(self._buried)
 
     def contains(self, envelope: Envelope) -> bool:
         if any(item is envelope for item in self._buried):

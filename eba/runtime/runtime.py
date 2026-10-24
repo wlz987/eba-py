@@ -110,6 +110,7 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
 
     def stats(self) -> dict[str, object]:
         active = held = queued = pending = rejected = cancel_errors = pending_cancels = 0
+        outbox = buried = 0
         last: str | None = None
         hosts_detail: dict[str, dict[str, int | str | None]] = {}
         for host in self._hosts.values():
@@ -121,6 +122,8 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             rejected_now = core.rejected_count
             cancel_errors_now = core.cancel_errors
             pending_cancels_now = len(core.cancel_pending)
+            outbox_now = core.outbox.size
+            buried_now = core.outbox.buried
             hosts_detail[str(host.actor_id)] = {
                 "active": active_now,
                 "held": held_now,
@@ -129,6 +132,8 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
                 "rejected": rejected_now,
                 "cancel_errors": cancel_errors_now,
                 "pending_cancels": pending_cancels_now,
+                "outbox": outbox_now,
+                "buried": buried_now,
                 "last_cancel_error": core.last_cancel_error,
             }
             active += active_now
@@ -138,6 +143,8 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             rejected += rejected_now
             cancel_errors += cancel_errors_now
             pending_cancels += pending_cancels_now
+            outbox += outbox_now
+            buried += buried_now
             last = core.last_cancel_error or last
         return {
             "hosts": len(self._hosts),
@@ -148,6 +155,8 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             "rejected": rejected,
             "cancel_errors": cancel_errors,
             "pending_cancels": pending_cancels,
+            "outbox": outbox,
+            "buried": buried,
             "last_cancel_error": last,
             "hosts_detail": hosts_detail,
         }
