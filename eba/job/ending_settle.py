@@ -19,6 +19,9 @@ def invoke(callback: Callable[[], object]) -> None:
 
 def drop_job(core: Core, job: Job) -> None:
     request_id = state_of(job).root.header.id
+    reply = core.held.pop(request_id, None)
+    if reply is not None:
+        reply._close()
     if core.jobs.get(request_id) is job:
         del core.jobs[request_id]
 

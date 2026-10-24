@@ -48,6 +48,8 @@ def _fail_hook(core: Core, bus: Bus, id_gen: IdGen, job: Job, error: Exception) 
 
 def _silence(core: Core, job: Job, id_gen: IdGen) -> Envelope | None:
     state = state_of(job)
+    if state.held:
+        return None
     own_reply = state.root.header.reply_to == reply_topic(core.sub.inbox)
     if state.replied or state.root.header.kind != "request" or (own_reply and not core.book.holds(state.root.header.id)):
         return None

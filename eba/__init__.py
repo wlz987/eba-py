@@ -21,7 +21,7 @@ from eba.envelope import (
     result_value,
 )
 from eba.errors import BackpressureError, BusError, DeliveryError, InvalidTopic, MailboxFull
-from eba.job import Caller, Context, Job, JobHost
+from eba.job import Caller, Context, Job, JobHost, Reply
 from eba.mail.bus import Bus
 from eba.mail.inbox import Inbox, Receiver
 from eba.runtime.drive import Drive, Pending
@@ -53,6 +53,7 @@ __all__ = [
     "MonotonicClock",
     "Pending",
     "Receiver",
+    "Reply",
     "Runtime",
     "SeqIdGen",
     "UuidIdGen",

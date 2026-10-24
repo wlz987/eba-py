@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 
 from eba.envelope.envelope import IdGen
 from eba.errors import DeliveryError, WakeError
+from eba.job.held import resolve_held
 from eba.job.host import JobHost
+from eba.job.host_core import core_of
 from eba.mail.inbox import close_count
 from eba.time.clock import Clock, pin_clock
 
@@ -61,6 +63,17 @@ class _RuntimeAdvance:
                         raise
                     finally:
                         JobHost.project(host, self._agenda)
+                for host in list(self._hosts.values()):
+                    if host.state not in {"running", "draining"}:
+                        continue
+                    try:
+                        resolved = resolve_held(core_of(host), self._bus, self._id_gen)
+                    except DeliveryError as error:
+                        self._answer_spent(error, pinned)
+                        raise
+                    if resolved:
+                        JobHost.project(host, self._agenda)
+                        progressed = True
                 fault = self._agenda.take_fault()
                 if fault is not None:
                     raise WakeError(str(fault)) from fault

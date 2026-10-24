@@ -5,6 +5,7 @@ from eba.errors import LeasePending, combine_failures
 from eba.job.close_ops import _finish_jobs, _settle_inbound, _settle_letter
 from eba.job.core import Core
 from eba.job.delivery import release_attempts
+from eba.job.held import close_held
 from eba.job.job import state_of
 from eba.job.pump import _SIGNAL_MASK, _enter, _idle, _recompute_pause
 from eba.mail.bus import Bus
@@ -17,6 +18,7 @@ def close_core(core: Core, bus: Bus) -> list[Envelope]:
     _enter(core, closing=True)
     try:
         abandoned = core.begin_close()
+        close_held(core)
         hook_error, lease_error = _finish_jobs(core, abandoned)
         _settle_inbound(core, abandoned, core.queue.size + held_count(core.sub.inbox))
         _recompute_pause(core)

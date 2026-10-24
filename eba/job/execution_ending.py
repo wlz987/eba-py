@@ -24,6 +24,8 @@ def _prepare_ending(
     job: Job,
     commit: Commit,
 ) -> tuple[Envelope | None, Control | None]:
+    if commit.hold is not None:
+        return None, None
     reply, control = _commit(core, bus, clock, id_gen, job, commit)
     if control is None:
         return reply, None

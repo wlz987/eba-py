@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 def seal_context(ctx: Context) -> Commit:
     buffer = _buffer_of(ctx)
     buffer.id_gen = None
-    return Commit(buffer.requests, buffer.reply, buffer.control)
+    return Commit(buffer.requests, buffer.reply, buffer.control, buffer.hold)
 
 
 def _buffer_of(ctx: Context) -> _Buffer:
@@ -37,6 +37,8 @@ def _require_active(ctx: Context) -> _Buffer:
 
 
 def _put_reply(buffer: _Buffer, body: object) -> None:
+    if buffer.hold is not None:
+        raise RuntimeError("job already held")
     if buffer.job.root.header.kind != "request":
         raise TypeError("root is not a request")
     if buffer.reply is not None or buffer.job.replied:

@@ -18,4 +18,6 @@ PYTHONPATH=. python3 examples/bus.py
 python3 -m mypy eba && python3 -m ruff check .
 ```
 
+- 服务端可在 `ctx.hold()` 扣住一个 request，稍后用 `Reply.send/fail` 写槽；`advance` 末尾结算。
+
 支持 3.11 起的每个 Python 系列（3.11、3.12、3.13、3.14）。

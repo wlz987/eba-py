@@ -40,6 +40,7 @@ class State:
     lifecycle: Lifecycle = "new"
     notice: Notice = "open"
     replied: bool = False
+    held: bool = False
     reply_body: Mapping[str, object] | None = None
     pending_control: Control | None = None
 

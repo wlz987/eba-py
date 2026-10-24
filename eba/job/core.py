@@ -9,6 +9,7 @@ from eba.envelope.ids import ActorId, EnvelopeId
 from eba.job.book import RequestBook
 from eba.job.job import Job
 from eba.job.outbox import Outbox
+from eba.job.reply import Reply
 from eba.mail.inbox import Receiver, read_signal
 from eba.mail.queue import Queue
 from eba.mail.subscriber import Subscriber
@@ -44,6 +45,7 @@ class Core:
         self.signal = read_signal(self.sub.inbox)
         self.outbox = Outbox(outbox_checked, self.signal)
         self.jobs: dict[EnvelopeId, Job] = {}
+        self.held: dict[EnvelopeId, Reply] = {}
         self.book = RequestBook()
         self.phase = 0
         self.busy = False

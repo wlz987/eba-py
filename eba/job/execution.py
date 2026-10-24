@@ -37,6 +37,8 @@ def run_hook(core: Core, bus: Bus, clock: Clock, id_gen: IdGen, job: Job, callba
         reply_to=reply_topic(core.sub.inbox),
         id_gen=id_gen,
         pending_count=core.book.count(root.header.id),
+        core=core,
+        bus=bus,
     )
     control: Control | None = None
     try:
@@ -45,6 +47,8 @@ def run_hook(core: Core, bus: Bus, clock: Clock, id_gen: IdGen, job: Job, callba
         finally:
             commit = seal_context(ctx)
         reply, control = _prepare_ending(core, bus, clock, id_gen, job, commit)
+        if commit.hold is not None:
+            return
         if control is not None:
             seal_job(core, job)
     except Exception as error:

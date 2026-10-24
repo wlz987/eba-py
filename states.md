@@ -125,6 +125,29 @@ stateDiagram-v2
 钩子既不回信也不发起请求、账上也没有还在等的段时，`_silence` 替它补一份 `job_silent` 的错误答复——这一份同时就是 `on_finished` 看见的那一份正文。它在三处停手：根不是 request；`replied` 已经为真；自派自的根在账上已经没有这一笔。停手不等于没人回答：event 的结局照样要交，作业照样移出。
 `Context` 只在那一次回调里动手：写下结局之后再 `request` 报 `job already finished`，同一只手同时写两封报 `reentrant Context mutation`。
 
+## Hold
+
+`Context.hold` 把一条已被受理的 request 留在 Job 上，等外部事件再答；它返回唯一的 `Reply`。
+held 不是生命周期那一格，而是 `active` 上的一个开关：`Job.finished` 仍假，`jobs` 表仍含它，
+`has_work` 为真，`scheduled` 不必为真。
+
+进入：仅 `active`、根是 request、本次回调尚未 `reply`/`finish`、buffer 里没有请求、账上也未结
+子请求（`pending_count` 为 0）、尚未 hold。任一条不成立，`hold` 报错；hold 之后 `request`/
+`finish`/`reply` 都报 `job already held`。
+
+应答：`Reply.send(body)` / `Reply.fail(error, code=...)` 各一次；body 必须具结局形状。它们只写
+一个槽，不直接改账，也不要求当前轮次：可以在本 Host 或别的 Host 的回调里写，也可以在轮次外写。
+槽登记在 `held` 表上。
+
+结算：每次 `advance` 的末尾，对每台 running / draining 的 Host 扫一遍 `held`；有正文的槽走
+`seal_job` → `delivering` → 既有出箱/`on_finished` 路径，然后从 `held` 摘掉。结算放出的回信可能
+要到下一轮才被调用方处理。没有正文的槽继续等。
+
+静默：held 的 Job 不被 `_silence` 补 `job_silent`；event 根照常收场。
+
+关闭：`close` 先关闭所有槽；已写未结算的正文丢弃，之后再 `send` 报 `reply closed`。held 的作业
+按未回信作业走 `on_rejected`，根进交还名单。v1 不设 held 期限；超时由应用或 `close` 负责。
+
 ## 回信与出箱
 
 名字：sending 这封正被递出去；queued 已进本组队列等轮到它；parked 被拒后停在组外等出箱有空；published 已经落地。

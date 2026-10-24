@@ -17,7 +17,10 @@ from eba.job.context_types import _Buffer as _Buffer
 from eba.job.context_types import _Intent as _Intent
 
 if TYPE_CHECKING:
+    from eba.job.core import Core
     from eba.job.job import Job
+    from eba.job.reply import Reply
+    from eba.mail.bus import Bus
 
 
 class Context:
@@ -29,8 +32,10 @@ class Context:
         reply_to: str,
         id_gen: IdGen,
         pending_count: int,
+        core: Core,
+        bus: Bus,
     ) -> None:
-        _buffers[self] = _Buffer(state_of(job), actor_id, reply_to, id_gen, pending_count)
+        _buffers[self] = _Buffer(job, state_of(job), actor_id, reply_to, id_gen, pending_count, core, bus)
 
     @property
     def root(self) -> Envelope:
@@ -50,5 +55,8 @@ class Context:
     def finish(self, body: object | None = None) -> None:
         _mutate(self, lambda buffer: _finish(buffer, body))
 
+    def hold(self) -> Reply:
+        return _mutate(self, _hold)
 
-from eba.job.context_ops import _finish, _mutate, _request  # noqa: E402
+
+from eba.job.context_ops import _finish, _hold, _mutate, _request  # noqa: E402
