@@ -23,9 +23,10 @@ class Caller(JobHost):
         receiver: Receiver,
         id_gen: IdGen,
         active_limit: int = 256,
+        actor_id: str = "caller",
     ) -> None:
         super().__init__(
-            actor_id="caller",
+            actor_id=actor_id,
             receiver=receiver,
             patterns=(),
             active_limit=active_limit,
