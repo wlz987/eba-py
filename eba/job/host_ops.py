@@ -44,7 +44,7 @@ class _HostOps(_HostOpsQuery):
 
     def advance(self, bus: Bus, clock: Clock, id_gen: IdGen) -> bool:
         core = core_of(cast("JobHost", self))
-        require(cast("JobHost", self), clock, _sheet=("eba-sheet",))
+        require(cast("JobHost", self), _sheet=("eba-sheet",))
         self.on_step(clock)
         return advance_host(core, bus, clock, id_gen)
 
@@ -81,7 +81,7 @@ class _HostOps(_HostOpsQuery):
         after: Callable[[], None],
     ) -> bool:
         core = core_of(cast("JobHost", self))
-        require(cast("JobHost", self), clock, owned=True, _sheet=("eba-sheet",))
+        require(cast("JobHost", self), owned=True, _sheet=("eba-sheet",))
         if not core.book.holds(request_id):
             return False
         if core.busy or core.state not in {"running", "draining"}:

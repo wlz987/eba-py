@@ -10,7 +10,6 @@ from eba.job.turn_roster import _agree
 
 def require(
     host: object,
-    _clock: object = _MISSING,
     *,
     owned: bool = False,
     op: str | None = None,
