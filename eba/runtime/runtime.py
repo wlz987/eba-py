@@ -108,18 +108,36 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
         )
         self._bus.publish(envelope)
 
-    def stats(self) -> dict[str, int | str | None]:
+    def stats(self) -> dict[str, object]:
         active = held = queued = pending = rejected = cancel_errors = pending_cancels = 0
         last: str | None = None
+        hosts_detail: dict[str, dict[str, int | str | None]] = {}
         for host in self._hosts.values():
             core = core_of(host)
-            active += len(core.jobs)
-            held += len(core.held)
-            queued += core.queue.size
-            pending += core.book.size
-            rejected += core.rejected_count
-            cancel_errors += core.cancel_errors
-            pending_cancels += len(core.cancel_pending)
+            active_now = len(core.jobs)
+            held_now = len(core.held)
+            queued_now = core.queue.size
+            pending_now = core.book.size
+            rejected_now = core.rejected_count
+            cancel_errors_now = core.cancel_errors
+            pending_cancels_now = len(core.cancel_pending)
+            hosts_detail[str(host.actor_id)] = {
+                "active": active_now,
+                "held": held_now,
+                "queued": queued_now,
+                "pending": pending_now,
+                "rejected": rejected_now,
+                "cancel_errors": cancel_errors_now,
+                "pending_cancels": pending_cancels_now,
+                "last_cancel_error": core.last_cancel_error,
+            }
+            active += active_now
+            held += held_now
+            queued += queued_now
+            pending += pending_now
+            rejected += rejected_now
+            cancel_errors += cancel_errors_now
+            pending_cancels += pending_cancels_now
             last = core.last_cancel_error or last
         return {
             "hosts": len(self._hosts),
@@ -131,6 +149,7 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             "cancel_errors": cancel_errors,
             "pending_cancels": pending_cancels,
             "last_cancel_error": last,
+            "hosts_detail": hosts_detail,
         }
 
     def owns(self, host: JobHost) -> bool:
