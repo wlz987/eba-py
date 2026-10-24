@@ -23,6 +23,7 @@ from eba.errors import BackpressureError, BusError, DeliveryError, InvalidTopic,
 from eba.job import Context, Job, JobHost, Reply
 from eba.mail.bus import Bus
 from eba.mail.inbox import Inbox, Receiver
+from eba.park import Park
 from eba.runtime.drive import Pending
 from eba.runtime.runtime import Runtime
 from eba.time.clock import Clock, ManualClock, MonotonicClock
@@ -47,6 +48,7 @@ __all__ = [
     "MailboxFull",
     "ManualClock",
     "MonotonicClock",
+    "Park",
     "Pending",
     "Receiver",
     "Reply",

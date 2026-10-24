@@ -10,7 +10,7 @@ from eba.job.book import RequestBook
 from eba.job.job import Job
 from eba.job.outbox import Outbox
 from eba.job.reply import Reply
-from eba.mail.inbox import Receiver, read_signal
+from eba.mail.inbox import Receiver, read_signal, remove
 from eba.mail.queue import Queue
 from eba.mail.subscriber import Subscriber
 from eba.time.numbers import nonnegative_int, positive_int
@@ -51,6 +51,8 @@ class Core:
         self.busy = False
         self.state: HostState = "running"
         self.rejected_count = 0
+        self.cancel_errors = 0
+        self.last_cancel_error: str | None = None
         self.abandoned: list[Envelope] | None = None
         self.pending: Envelope | None = None
         self.pending_job: Job | None = None
@@ -58,6 +60,32 @@ class Core:
         self.again: set[int] = set()
         self.attempts: dict[int, int] = {}
         self.kept: dict[int, Envelope] = {}
+
+    def take_cancelled(self) -> list[EnvelopeId]:
+        return self.book.take_cancelled()
+
+    def cancel_queued(self, request_ids: list[EnvelopeId]) -> None:
+        if not request_ids:
+            return
+        wanted = set(request_ids)
+        self.queue.remove(lambda item: isinstance(item, Envelope) and item.header.id in wanted)
+        for request_id in request_ids:
+            remove(self.sub.inbox, request_id)
+
+    def cancel_jobs(self, request_ids: list[EnvelopeId]) -> None:
+        from eba.job.cancel_job import cancel_job
+
+        for request_id in request_ids:
+            job = self.jobs.get(request_id)
+            if job is not None:
+                cancel_job(self, job)
+
+    def cancel_held(self, request_ids: list[EnvelopeId]) -> None:
+        for request_id in request_ids:
+            reply = self.held.get(request_id)
+            if reply is None or reply.is_closed or reply._take() is not None:
+                continue
+            reply.fail("cancelled")
 
     def begin_close(self) -> list[Envelope]:
         if self.abandoned is None:

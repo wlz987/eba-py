@@ -32,6 +32,23 @@ def enqueue(inbox: Inbox, envelope: Envelope) -> bool:
     return True
 
 
+def replace_topic(inbox: Inbox, envelope: Envelope) -> bool:
+    state = _state(inbox)
+    kind = envelope.header.kind
+    if state.closed or (state.work_paused and kind in ("event", "request")):
+        return False
+    kept = [item for item in state.items if item.header.topic != envelope.header.topic]
+    if len(kept) >= inbox.capacity:
+        return False
+    removed = len(state.items) - len(kept)
+    state.items.clear()
+    state.items.extend(kept)
+    state.items.append(envelope)
+    if removed:
+        state.space.notify()
+    return True
+
+
 def holds_kind(inbox: Inbox, kind: str) -> bool:
     return any(item.header.kind == kind for item in _state(inbox).items)
 
@@ -54,6 +71,22 @@ def pull_kind(inbox: Inbox, kind: str) -> Envelope | None:
             state.space.notify()
         return item
     return None
+
+
+def remove(inbox: Inbox, envelope_id: EnvelopeId) -> bool:
+    state = _state(inbox)
+    items = state.items
+    full = len(items) == inbox.capacity
+    for index, item in enumerate(items):
+        if item.header.id != envelope_id:
+            continue
+        del items[index]
+        if not items:
+            state.read.clear(READ)
+        if full:
+            state.space.notify()
+        return True
+    return False
 
 
 def find(inbox: Inbox, envelope_id: EnvelopeId) -> Envelope | None:

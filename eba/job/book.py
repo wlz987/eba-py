@@ -20,6 +20,7 @@ class RequestBook:
     def __init__(self) -> None:
         self._records = Records()
         self._owners: dict[EnvelopeId, set[EnvelopeId]] = {}
+        self._cancelled: list[EnvelopeId] = []
 
     @property
     def size(self) -> int:
@@ -71,6 +72,12 @@ class RequestBook:
         for request_id in list(self._owners.get(owner, ())):
             self._records.finish(request_id)
             self._forget(owner, request_id)
+            self._cancelled.append(request_id)
+
+    def take_cancelled(self) -> list[EnvelopeId]:
+        found = self._cancelled
+        self._cancelled = []
+        return found
 
     def _claim(self, claim: Claim | None) -> Claim | None:
         if claim is None:

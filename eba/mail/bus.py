@@ -24,6 +24,16 @@ class Bus(_BusDeliver):
         self._grant_frames: list[list[tuple[int, object]]] = []
         self._offers: list[_Offer] = []
         self._waits: set[str] = set()
+        self._owner: object | None = None
+
+    def claim(self, owner: object) -> None:
+        if self._owner is not None and self._owner is not owner:
+            raise RuntimeError("bus already belongs to a runtime")
+        self._owner = owner
+
+    def release(self, owner: object) -> None:
+        if self._owner is owner:
+            self._owner = None
 
     @contextmanager
     def granting(self) -> Iterator[list[tuple[int, object]]]:

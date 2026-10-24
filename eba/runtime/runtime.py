@@ -5,9 +5,11 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from typing import Literal
 
-from eba.envelope.envelope import IdGen, make_envelope
+from eba.envelope.envelope import Envelope, IdGen, make_envelope
+from eba.envelope.result import Completion
 from eba.job.caller import Caller
 from eba.job.host import JobHost
+from eba.job.host_core import core_of
 from eba.mail.bus import Bus
 from eba.mail.inbox import Inbox, close_count
 from eba.notify.agenda import Agenda
@@ -35,6 +37,7 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
         self._reading_clock = False
         self._state: RuntimeState = "running"
         self._bus = bus
+        bus.claim(self)
         self._clock = clock
         self._id_gen = id_gen
         self._view = _ClockView(self)
@@ -57,14 +60,9 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
         from_: str = "caller",
         timeout_ms: int | None = None,
     ) -> Pending:
-        caller = self._front_caller
-        if caller is None:
-            caller = Caller(Inbox(8).receiver(), self._id_gen, actor_id="sys.ask")
-            self.add(caller)
-            self._front_caller = caller
         loop = asyncio.get_running_loop()
         ready = loop.create_future()
-        envelope = caller.admit(
+        envelope = self._front().admit(
             topic=topic,
             payload=payload,
             from_=from_,
@@ -72,6 +70,33 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             pay=_pay(ready),
         )
         return Pending(envelope, ready)
+
+    def ask_with(
+        self,
+        topic: str,
+        payload: object,
+        from_: str = "caller",
+        timeout_ms: int | None = None,
+        *,
+        pay: Callable[[Completion], None],
+    ) -> Envelope:
+        """Hand the completion to pay; it runs once inside a turn and must not re-enter the runtime."""
+        return self._front().admit(
+            topic=topic,
+            payload=payload,
+            from_=from_,
+            timeout_ms=timeout_ms,
+            pay=pay,
+        )
+
+    def _front(self) -> Caller:
+        caller = self._front_caller
+        if caller is None:
+            # front inbox matches Caller's default active limit
+            caller = Caller(Inbox(256).receiver(), self._id_gen, actor_id="sys.ask")
+            self.add(caller)
+            self._front_caller = caller
+        return caller
 
     def tell(self, topic: str, payload: object, from_: str = "caller") -> None:
         envelope = make_envelope(
@@ -82,6 +107,29 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             kind="event",
         )
         self._bus.publish(envelope)
+
+    def stats(self) -> dict[str, int | str | None]:
+        active = held = queued = pending = rejected = cancel_errors = 0
+        last: str | None = None
+        for host in self._hosts.values():
+            core = core_of(host)
+            active += len(core.jobs)
+            held += len(core.held)
+            queued += core.queue.size
+            pending += core.book.size
+            rejected += core.rejected_count
+            cancel_errors += core.cancel_errors
+            last = core.last_cancel_error or last
+        return {
+            "hosts": len(self._hosts),
+            "active": active,
+            "held": held,
+            "queued": queued,
+            "pending": pending,
+            "rejected": rejected,
+            "cancel_errors": cancel_errors,
+            "last_cancel_error": last,
+        }
 
     def owns(self, host: JobHost) -> bool:
         return self._hosts.get(str(host.actor_id)) is host

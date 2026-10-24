@@ -26,6 +26,10 @@ class Reply:
     def fail(self, error: str, code: int | None = None) -> None:
         self.send(err_payload(error) if code is None else err_payload_code(error, code))
 
+    @property
+    def is_closed(self) -> bool:
+        return self._closed
+
     def _take(self) -> Mapping[str, object] | None:
         return self._body
 

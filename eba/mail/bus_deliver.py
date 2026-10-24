@@ -3,9 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from eba.envelope.envelope import Envelope, checked_envelope
+from eba.envelope.errors import EnvelopeBuildError
 from eba.envelope.topic import split_topic
 from eba.errors import MailboxFull
-from eba.mail.inbox import Inbox, can_enqueue, enqueue, mark_read, read_signal, watch_space
+from eba.mail.inbox import (
+    Inbox,
+    can_enqueue,
+    enqueue,
+    mark_read,
+    read_signal,
+    replace_topic,
+    watch_space,
+)
 from eba.mail.routes import _Routes
 from eba.notify.signal import Signal
 from eba.notify.watch import Interest
@@ -42,6 +51,28 @@ class _BusDeliver:
         for box in targets:
             mark_read(box)
         return True
+
+    def publish_best_effort(self, envelope: Envelope) -> int:
+        """Fan out to every target with room; return how many full or closed targets were skipped."""
+        envelope = checked_envelope(envelope)
+        targets = self._routes.snapshot_match(split_topic(envelope.header.topic))
+        ready = [box for box in targets if can_enqueue(box, envelope.header.kind)]
+        for box in ready:
+            enqueue(box, envelope)
+        for box in ready:
+            mark_read(box)
+        return len(targets) - len(ready)
+
+    def publish_latest(self, envelope: Envelope) -> int:
+        """Keep only the newest event of its topic in each target; return skipped targets."""
+        envelope = checked_envelope(envelope)
+        if envelope.header.kind != "event":
+            raise EnvelopeBuildError("publish_latest requires an event")
+        targets = self._routes.snapshot_match(split_topic(envelope.header.topic))
+        accepted = [box for box in targets if replace_topic(box, envelope)]
+        for box in accepted:
+            mark_read(box)
+        return len(targets) - len(accepted)
 
     def deliver(self, envelope: Envelope, home: object) -> None:
         held = checked_envelope(envelope)

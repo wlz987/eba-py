@@ -85,6 +85,12 @@ from eba.mail.inbox_ops import (  # noqa: E402
     remaining as remaining,
 )
 from eba.mail.inbox_ops import (  # noqa: E402
+    remove as remove,
+)
+from eba.mail.inbox_ops import (  # noqa: E402
+    replace_topic as replace_topic,
+)
+from eba.mail.inbox_ops import (  # noqa: E402
     reply_topic as reply_topic,
 )
 from eba.mail.inbox_ops import (  # noqa: E402

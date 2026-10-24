@@ -5,6 +5,7 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING
 
 from eba.envelope.envelope import IdGen
+from eba.envelope.ids import EnvelopeId
 from eba.errors import DeliveryError, WakeError
 from eba.job.held import resolve_held
 from eba.job.host import JobHost
@@ -33,6 +34,18 @@ class _RuntimeAdvance:
     def _schedule_now(self) -> int:
         raise NotImplementedError
 
+    def _drain_cancelled(self) -> list[EnvelopeId]:
+        cancelled: list[EnvelopeId] = []
+        for host in list(self._hosts.values()):
+            cancelled.extend(core_of(host).take_cancelled())
+        if cancelled:
+            for host in list(self._hosts.values()):
+                core = core_of(host)
+                core.cancel_queued(cancelled)
+                core.cancel_held(cancelled)
+                core.cancel_jobs(cancelled)
+        return cancelled
+
     def advance(self) -> bool:
         with self._enter():
             try:
@@ -46,6 +59,9 @@ class _RuntimeAdvance:
                             JobHost.notice_closed_inbox(host)
                             JobHost.project(host, self._agenda)
                 self._agenda.due(now)
+                if self._drain_cancelled():
+                    for host in list(self._hosts.values()):
+                        JobHost.project(host, self._agenda)
                 pinned = pin_clock(now)
                 count = len(self._agenda.ready)
                 progressed = False
@@ -63,6 +79,7 @@ class _RuntimeAdvance:
                         raise
                     finally:
                         JobHost.project(host, self._agenda)
+                self._drain_cancelled()
                 for host in list(self._hosts.values()):
                     if host.state not in {"running", "draining"}:
                         continue

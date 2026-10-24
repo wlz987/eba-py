@@ -1,5 +1,5 @@
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from eba.time.numbers import positive_int
 
@@ -22,6 +22,12 @@ class Queue:
             return False
         self._items.append(item)
         return True
+
+    def remove(self, predicate: Callable[[object], bool]) -> int:
+        kept = deque(item for item in self._items if not predicate(item))
+        removed = len(self._items) - len(kept)
+        self._items = kept
+        return removed
 
     def __iter__(self) -> Iterator[object]:
         return iter(self._items)

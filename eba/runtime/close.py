@@ -58,6 +58,7 @@ class _RuntimeClose:
                     require(host, op="release")
                 if actor_id is None:
                     self._state = "closed"
+                    self._bus.release(self)
                 return abandoned
         finally:
             if entered:
