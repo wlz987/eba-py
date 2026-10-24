@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eba-py"
-version = "0.6.0"
+version = "0.6.1"
 description = "进程内、单写者、合作式的 EBA 运行时"
 license = "MIT"
 license-files = ["LICENSE"]

@@ -109,7 +109,7 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
         self._bus.publish(envelope)
 
     def stats(self) -> dict[str, int | str | None]:
-        active = held = queued = pending = rejected = cancel_errors = 0
+        active = held = queued = pending = rejected = cancel_errors = pending_cancels = 0
         last: str | None = None
         for host in self._hosts.values():
             core = core_of(host)
@@ -119,6 +119,7 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             pending += core.book.size
             rejected += core.rejected_count
             cancel_errors += core.cancel_errors
+            pending_cancels += len(core.cancel_pending)
             last = core.last_cancel_error or last
         return {
             "hosts": len(self._hosts),
@@ -128,6 +129,7 @@ class Runtime(_RuntimeLifecycle, _RuntimeView, _RuntimeDrain, _RuntimeAdvance, _
             "pending": pending,
             "rejected": rejected,
             "cancel_errors": cancel_errors,
+            "pending_cancels": pending_cancels,
             "last_cancel_error": last,
         }
 

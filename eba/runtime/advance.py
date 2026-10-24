@@ -37,7 +37,9 @@ class _RuntimeAdvance:
     def _drain_cancelled(self) -> list[EnvelopeId]:
         cancelled: list[EnvelopeId] = []
         for host in list(self._hosts.values()):
-            cancelled.extend(core_of(host).take_cancelled())
+            core = core_of(host)
+            cancelled.extend(core.take_cancelled())
+            cancelled.extend(core.take_pending_cancels())
         if cancelled:
             for host in list(self._hosts.values()):
                 core = core_of(host)

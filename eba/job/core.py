@@ -7,7 +7,7 @@ from typing import Literal
 from eba.envelope.envelope import Envelope
 from eba.envelope.ids import ActorId, EnvelopeId
 from eba.job.book import RequestBook
-from eba.job.job import Job
+from eba.job.job import Job, state_of
 from eba.job.outbox import Outbox
 from eba.job.reply import Reply
 from eba.mail.inbox import Receiver, read_signal, remove
@@ -53,6 +53,7 @@ class Core:
         self.rejected_count = 0
         self.cancel_errors = 0
         self.last_cancel_error: str | None = None
+        self.cancel_pending: set[EnvelopeId] = set()
         self.abandoned: list[Envelope] | None = None
         self.pending: Envelope | None = None
         self.pending_job: Job | None = None
@@ -77,8 +78,20 @@ class Core:
 
         for request_id in request_ids:
             job = self.jobs.get(request_id)
-            if job is not None:
-                cancel_job(self, job)
+            if job is None:
+                self.cancel_pending.discard(request_id)
+                continue
+            state = state_of(job)
+            if state.lifecycle != "active" or state.held:
+                self.cancel_pending.discard(request_id)
+                continue
+            if not cancel_job(self, job):
+                self.cancel_pending.add(request_id)
+
+    def take_pending_cancels(self) -> set[EnvelopeId]:
+        found = self.cancel_pending
+        self.cancel_pending = set()
+        return found
 
     def cancel_held(self, request_ids: list[EnvelopeId]) -> None:
         for request_id in request_ids:

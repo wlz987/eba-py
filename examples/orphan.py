@@ -1,6 +1,8 @@
 from eba import Bus, Inbox, Job, JobHost, ManualClock, Runtime, SeqIdGen
+from eba.errors import LeasePending
 from eba.job import Caller
 from eba.job.call import settled
+from eba.job.host_core import core_of
 
 finished = []
 begun = []
@@ -51,7 +53,8 @@ def main() -> None:
     runtime = Runtime(Bus(), ManualClock(), SeqIdGen())
     runtime.add(HoldHost(actor_id="hold", receiver=Inbox(8).receiver(), patterns=["orphan.work"]))
     runtime.add(ActiveHost(actor_id="active", receiver=Inbox(8).receiver(), patterns=["active"]))
-    runtime.add(BadHost(actor_id="bad", receiver=Inbox(8).receiver(), patterns=["bad"]))
+    bad_host = BadHost(actor_id="bad", receiver=Inbox(8).receiver(), patterns=["bad"])
+    runtime.add(bad_host)
     caller = Caller(Inbox(8).receiver(), runtime.id_gen)
     runtime.add(caller)
     root = caller.admit(topic="orphan.work", payload={"n": 1}, from_="orphan")
@@ -122,6 +125,33 @@ def main() -> None:
         or stats["last_cancel_error"] != "cleanup boom"
     ):
         raise SystemExit(f"orphan bad hook: {stats!r}")
+
+    bad_core = core_of(bad_host)
+    original_cancel = bad_core.book.cancel
+    lease_calls = 0
+    def lease_once(owner):
+        nonlocal lease_calls
+        lease_calls += 1
+        if lease_calls == 1:
+            raise LeasePending()
+        return original_cancel(owner)
+    bad_core.book.cancel = lease_once
+    lease_root = caller.admit(topic="bad", payload={}, from_="orphan")
+    for _ in range(8):
+        runtime.advance()
+    lease_cancelled = caller.cancel(lease_root.header.id)
+    for _ in range(12):
+        runtime.advance()
+    lease_stats = runtime.stats()
+    bad_core.book.cancel = original_cancel
+    if (
+        not lease_cancelled
+        or lease_calls != 2
+        or bad_core.jobs
+        or lease_stats["pending_cancels"] != 0
+        or lease_stats["active"] != 0
+    ):
+        raise SystemExit(f"orphan lease: {lease_stats!r} calls={lease_calls}")
 
     pay_root = caller.admit(topic="orphan.work", payload={"n": 5}, from_="orphan")
     for _ in range(4):
