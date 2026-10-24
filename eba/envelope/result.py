@@ -5,7 +5,7 @@ from typing import TypeGuard, cast
 from eba.envelope.envelope import Envelope
 from eba.envelope.ids import EnvelopeId
 
-_RESERVED = frozenset({"ok", "error", "value"})
+_RESERVED = frozenset({"ok", "error", "value", "code"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,13 +23,34 @@ def ok_payload(value: object) -> dict[str, object]:
 
 
 def err_payload(error: str, detail: Mapping[str, object] | None = None) -> dict[str, object]:
+    return _error_payload(error, detail, None)
+
+
+def err_payload_code(
+    error: str,
+    code: int,
+    detail: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    if isinstance(code, bool) or not isinstance(code, int):
+        raise TypeError("code must be an int")
+    return _error_payload(error, detail, code)
+
+
+def _error_payload(
+    error: str,
+    detail: Mapping[str, object] | None,
+    code: int | None,
+) -> dict[str, object]:
     if not isinstance(error, str):
         raise TypeError("error must be a string")
     extra = {} if detail is None else dict(detail)
     for key in extra:
         if key in _RESERVED:
             raise ValueError(f"reserved result key: {key!r}")
-    return {"ok": False, "error": error, **extra}
+    body: dict[str, object] = {"ok": False, "error": error, **extra}
+    if code is not None:
+        body["code"] = code
+    return body
 
 
 def is_result_ok(body: object) -> bool:
@@ -56,6 +77,18 @@ def result_error(body: Mapping[str, object]) -> str:
     if not is_result_err(body):
         raise TypeError("result body is not Err")
     return cast(str, body["error"])
+
+
+def result_code(body: object) -> int | None:
+    if not is_result_err(body):
+        return None
+    record = _record(body)
+    if record is None:
+        return None
+    code = record.get("code")
+    if isinstance(code, bool) or not isinstance(code, int):
+        return None
+    return code
 
 
 def result_body(envelope: Envelope) -> Mapping[str, object] | None:
